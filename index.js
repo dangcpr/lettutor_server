@@ -17,9 +17,11 @@ app.listen(PORT, async () => {
 });
 
 
-/*
+
 app.get('/', async (req, res) =>  {
     try {
+        const db = require('./config/db');
+        const bcryptjs = require('bcryptjs');
         let queryResult = await db.any('SELECT * FROM "ACCOUNTS"');
         // let queryResult = await db.any('INSERT INTO "TEACHERS" ("uuid", "categories") VALUES (${uuid}, ${categories})', {
             // uuid: '53cdca2c-3633-4d93-9b03-55ffdb8e5b1b',
@@ -45,4 +47,4 @@ app.get('/', async (req, res) =>  {
         });
     }
 });
-*/
+
