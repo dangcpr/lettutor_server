@@ -13,7 +13,7 @@ module.exports = {
     },
 
     getAccountByEmail: (email) => {
-        return conn.any('SELECT "uuid", "email", "password" FROM "ACCOUNTS" WHERE "email" = ${email}', {
+        return conn.any('SELECT "uuid", "email", "password", "verified", "verified_phone" FROM "ACCOUNTS" WHERE "email" = ${email}', {
             email: email,
         })
     },
@@ -23,5 +23,17 @@ module.exports = {
             email: email,
             password: password,
         });
+    },
+
+    updateLoginTime: (uuid) => {
+        return conn.any('UPDATE "ACCOUNTS" SET "last_login" = NOW() WHERE "uuid" = ${uuid}', {
+            uuid: uuid,
+        })
+    },
+
+    updateVerified: (email) => {
+        return conn.any('UPDATE "ACCOUNTS" SET "verified" = TRUE WHERE "email" = ${email}', {
+            email: email,
+        })
     }
 } 

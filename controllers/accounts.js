@@ -3,6 +3,7 @@ const accountModel = require('../models/accounts');
 const jwt = require('jsonwebtoken');
 const bcryptjs = require('bcryptjs');
 var validator = require("email-validator");
+const { sendMail } = require('../helpers');
 require('dotenv').config();
 
 const accountRouter = express.Router();
@@ -44,7 +45,6 @@ accountRouter.post('/signup', async(req, res) => {
             })
         }
 
-
         if (req.body.password != req.body.rePassword) {
             return res.status(400).json ({
                 'error': 203,
@@ -61,9 +61,10 @@ accountRouter.post('/signup', async(req, res) => {
             })
         }
 
-
-        await accountModel.addAccount(req.body.email, await bcryptjs.hash(req.body.password, 10))
-        console.log(1)
+        await accountModel.addAccount(req.body.email, await bcryptjs.hash(req.body.password, 10));
+        const token = jwt.sign({ email: req.body.email }, process.env.JWT_SECRET_SIGNUP, { expiresIn: '5m' });
+        sendMail(req.body.email, `${process.env.SERVER}/verified/${token}`)
+        
         return res.status(200).json({
             'result': {
                 'message': 'Đăng ký thành công',
@@ -74,6 +75,30 @@ accountRouter.post('/signup', async(req, res) => {
         res.status(500).json({
             message: e.message
         })
+    }
+})
+
+accountRouter.get('/verified/:token', async (req, res) => {
+    try {
+        const result = jwt.verify(req.params.token, process.env.JWT_SECRET_SIGNUP);
+        await accountModel.updateVerified(result.email);
+        
+        res.status(200).send('<p>Xác thực tài khoản thành công</p>');
+        
+    } catch (e) {
+        if(e.name == 'TokenExpiredError') {
+            return res.status(401).send('<p>Link xác thực đã hết hạn</p>');
+        }
+
+        if (e.name == 'JsonWebTokenError') {
+            res.status(401).send('<p>Link xác thực không hợp lệ</p>');
+        }
+        else {
+            res.status(500).json({
+                'error': 300,
+                'message': e.message,
+            });
+        }
     }
 })
 
@@ -103,6 +128,7 @@ accountRouter.post('/login', async(req, res) => {
         }
         console.log(result[0]);
 
+        let message = '';
         const compare = await bcryptjs.compare(req.body.password, result[0].password)
         if (compare === false) {
             return res.status(401).json ({
@@ -111,12 +137,20 @@ accountRouter.post('/login', async(req, res) => {
             })
         } else {
             const token = jwt.sign({ id: result[0].uuid }, process.env.JWT_SECRET, {expiresIn: "7d"});
+            if(result[0].verified === true) {
+                await accountModel.updateLoginTime(result[0].uuid);
+                message = 'Đăng nhập thành công'
+            }
+            else {
+                message = 'Vui lòng xác thực tài khoản'
+            }
             const infoAccount = await accountModel.getAccountById(result[0].uuid);
             return res.status(200).json({
                 'result': {
                     ...infoAccount,
                     'token': token,
                 },
+                'message': message
             });
         }
         
@@ -140,14 +174,16 @@ accountRouter.post('/createjwt', async (req, res) => {
     }
 })
 
+
+
 accountRouter.post('/verified', async (req, res) => {
     try {
         const result = jwt.verify(req.body.token, process.env.JWT_SECRET);
-        
+
         res.status(200).json({
             'result': result,
         });
-        
+
     } catch (e) {
         if(e.name == 'TokenExpiredError') {
             return res.status(401).json({
@@ -164,7 +200,7 @@ accountRouter.post('/verified', async (req, res) => {
         }
         else {
             res.status(500).json({
-                'error': 200,
+                'error': 100,
                 'message': e.message,
             });
         }
