@@ -13,7 +13,7 @@ module.exports = {
     },
 
     getAccountByEmail: (email) => {
-        return conn.any('SELECT "uuid", "email", "password", "verified", "verified_phone" FROM "ACCOUNTS" WHERE "email" = ${email}', {
+        return conn.any('SELECT * FROM "ACCOUNTS" WHERE "email" = ${email}', {
             email: email,
         })
     },

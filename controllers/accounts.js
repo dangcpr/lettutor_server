@@ -63,26 +63,81 @@ accountRouter.post('/signup', async(req, res) => {
 
         await accountModel.addAccount(req.body.email, await bcryptjs.hash(req.body.password, 10));
         const token = jwt.sign({ email: req.body.email }, process.env.JWT_SECRET_SIGNUP, { expiresIn: '5m' });
-        sendMail(req.body.email, `${process.env.SERVER}/verified/${token}`)
+        sendMail(req.body.email, `${process.env.SERVER}/verified/token/${token}`)
         
-        return res.status(200).json({
+        res.status(200).json({
             'result': {
                 'message': 'Đăng ký thành công',
             },
         });
         
     } catch (e) {
-        res.status(500).json({
+        return res.status(500).json({
             message: e.message
         })
     }
 })
 
-accountRouter.get('/verified/:token', async (req, res) => {
+accountRouter.post('/verified/resendtoken', async (req, res) => {
+    try {
+        if(req.body.email === null || req.body.email === '') {
+            return res.status(400).json ({
+                'error': 401,
+                'message': 'Không được để trống email'
+            })
+        }
+
+        if(validator.validate(req.body.email) === false) {
+            return res.status(400).json ({
+                'error': 402,
+                'message': 'Email không hợp lệ'
+            })
+        }
+
+        const result = await accountModel.getAccountByEmail(req.body.email);
+        if(result.length === 0) {
+            return res.status(401).json ({
+                'error': 410,
+                'message': 'Email không tồn tại'
+            })
+        }
+
+        if(result[0].verified === true) {
+            return res.status(401).json ({
+                'error': 411,
+                'message': 'Email đã được xác thực'
+            })
+        }
+
+        const token = jwt.sign({ email: req.body.email }, process.env.JWT_SECRET_SIGNUP, { expiresIn: '5m' });
+        sendMail(req.body.email, `${process.env.SERVER}/verified/token/${token}`)
+        res.status(200).json({
+            'result': {
+                'message': 'Gửi lại email xác thực thành công',
+            },
+        });
+
+    } catch (e) {
+        return res.status(500).json({
+            message: e.message
+        })
+    }
+})
+
+accountRouter.get('/verified/token/:token', async (req, res) => {
     try {
         const result = jwt.verify(req.params.token, process.env.JWT_SECRET_SIGNUP);
+        const getAccount = await accountModel.getAccountByEmail(result.email);
+
+        if(getAccount.length === 0) {
+            return res.status(401).send('<p>Tài khoản không tồn tại</p>');
+        }
+
+        if(getAccount[0].verified === true) {
+            return res.status(401).send('<p>Tài khoản đã được xác thực</p>');
+        }
+
         await accountModel.updateVerified(result.email);
-        
         res.status(200).send('<p>Xác thực tài khoản thành công</p>');
         
     } catch (e) {
@@ -91,10 +146,10 @@ accountRouter.get('/verified/:token', async (req, res) => {
         }
 
         if (e.name == 'JsonWebTokenError') {
-            res.status(401).send('<p>Link xác thực không hợp lệ</p>');
+            return res.status(401).send('<p>Link xác thực không hợp lệ</p>');
         }
         else {
-            res.status(500).json({
+            return res.status(500).json({
                 'error': 300,
                 'message': e.message,
             });

@@ -21,7 +21,7 @@ exports.sendMail = (toEmail, link) => {
         from: process.env.SMTP_USERNAME,
         to: toEmail,
         subject: 'LETTUTOR - Email verification',
-        text: `Please click the ${link} to verify your email address, this link will expire in 5 minutes. If you did not request this, please ignore this email. Thank you!`
+        html: `<p>Please click the <a href="${link}">this link</a> to verify your email address, this link will expire in 5 minutes. If you did not request this, please ignore this email. Thank you!</p>`
     }, (err, info) => {
         if (err) {
             console.log(err);
