@@ -3,13 +3,21 @@ const bcryptjs = require('bcryptjs');
 
 module.exports = {
     getAccount : () => {
-        return conn.any('SELECT * FROM "ACCOUNTS"');
+        try {
+            return conn.any('SELECT * FROM "ACCOUNTS"');
+        } catch (error) {
+            throw error;
+        }
     },
 
     getAccountById: (uuid) => {
-        return conn.one('SELECT * FROM "ACCOUNTS" WHERE "uuid" = ${uuid}', {
-            uuid: uuid
-        })
+        try {
+            return conn.one('SELECT * FROM "ACCOUNTS" WHERE "uuid" = ${uuid}', {
+                uuid: uuid
+            })
+        } catch (error) {
+            throw error;
+        }
     },
 
     getAccountByEmail: (email) => {

@@ -4,9 +4,10 @@ const bcryptjs = require('bcryptjs');
 var validator = require("email-validator");
 const { sendMail } = require('../helpers');
 require('dotenv').config();
+//Dùng cookies
 
 module.exports = {
-    getAllAccount: async (req, res) => {
+    getAllAccount: async (req, res, next) => {
         try {
             const queryResult = await accountModel.getAccount()
             console.log(queryResult.length);
@@ -189,7 +190,9 @@ module.exports = {
                     'message': 'Email hoặc mật khẩu không đúng'
                 })
             } else {
-                const token = jwt.sign({ id: result[0].uuid }, process.env.JWT_SECRET, {expiresIn: "7d"});
+                const access_token = jwt.sign({ id: result[0].uuid }, process.env.JWT_SECRET, {expiresIn: "10m"});
+                const refresh_token = jwt.sign({ id: result[0].uuid }, process.env.JWT_SECRET_REFRESH, {expiresIn: "1y"});
+
                 if(result[0].verified === true) {
                     await accountModel.updateLoginTime(result[0].uuid);
                     message = 'Đăng nhập thành công'
@@ -198,10 +201,14 @@ module.exports = {
                     message = 'Vui lòng xác thực tài khoản'
                 }
                 const infoAccount = await accountModel.getAccountById(result[0].uuid);
+
+                res.cookie('access-token', access_token, { maxAge: 10 * 60 * 1000, httpOnly: true });
+                res.cookie('refresh-token', refresh_token, { maxAge: 365 * 24 * 60 * 60 * 1000, httpOnly: true });
+                
                 return res.status(200).json({
                     'result': {
                         ...infoAccount,
-                        'token': token,
+                        'token': access_token,
                     },
                     'message': message
                 });
@@ -213,4 +220,89 @@ module.exports = {
             })
         }
     },
+
+    autoLogin: (req, res) => {
+        try {
+            const refreshToken = req.cookies['refresh-token'];
+            if(refreshToken === null || refreshToken === '') {
+                return res.status(401).json({
+                    'error': 601,
+                    'message': 'Không có token'
+                })
+            }
+            else {
+                jwt.verify(refreshToken, process.env.JWT_SECRET_REFRESH, (err, result) => {
+                    if(err) {
+                        if(err.name === 'TokenExpiredError') {
+                            return res.status(401).json({
+                                'error': 602,
+                                'message': 'Phiên đăng nhập đã hết hạn'
+                            })
+                        }
+                        
+                        if(err.name === 'JsonWebTokenError') {
+                            return res.status(401).json({
+                                'error': 603,
+                                'message': 'Token không tồn tại'
+                            })
+                        }
+                    }
+                    else {
+                        return res.status(200).json({
+                            'message': 'Đăng nhập thành công'
+                        })
+                    }
+                })
+            }
+        } catch (e) {
+            return res.status(500).json({
+                message: e.message
+            })
+        }
+    },
+
+    refreshToken: async (req, res) => {
+        try {
+            const refreshToken = req.cookies['refresh-token'];
+            if (refreshToken === null || refreshToken === '') {
+                return res.status(401).json({
+                    'error': 501,
+                    'message': 'Không có token'
+                })
+            }
+            else {
+                jwt.verify(refreshToken, process.env.JWT_SECRET_REFRESH, (err, result) => {
+                    if(err) {
+                        if (err.name === 'TokenExpiredError') {
+                            return res.status(401).json({
+                                'error': 502,
+                                'message': 'Token hết hạn'
+                            })
+                        }
+
+                        if(err.name === 'JsonWebTokenError') {
+                            return res.status(401).json({
+                                'error': 503,
+                                'message': 'Token không hợp lệ'
+                            })
+                        }
+                    }
+                    else {
+                        const newAccessToken = jwt.sign({ id: result.id }, process.env.JWT_SECRET, { expiresIn: "30s" });
+                        res.cookie('access-token', newAccessToken, { maxAge: 10 * 60 * 1000, httpOnly: true });
+                        return res.status(200).json({
+                            'status': 'success',
+                            'access_token': newAccessToken
+                        })
+                    }
+                })
+            }
+        }
+        catch (e) {
+            res.status(500).json({
+                'error': 500,
+                'message': e.message
+            })
+        }
+    }
 }
