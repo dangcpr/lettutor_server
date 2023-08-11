@@ -12,5 +12,6 @@ accountRouter.get('/verified/token/:token', AccountController.verifiedTokenSignu
 accountRouter.post('/login', AccountController.login);
 accountRouter.post('/refresh', AccountController.refreshToken);
 accountRouter.post('/autoLogin', AccountController.autoLogin);
+accountRouter.post('/logout', AccountController.logout);
 
 module.exports = accountRouter;

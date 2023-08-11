@@ -21,27 +21,43 @@ module.exports = {
     },
 
     getAccountByEmail: (email) => {
-        return conn.any('SELECT * FROM "ACCOUNTS" WHERE "email" = ${email}', {
-            email: email,
-        })
+        try {
+            return conn.any('SELECT * FROM "ACCOUNTS" WHERE "email" = ${email}', {
+                email: email,
+            })
+        } catch (error) {
+            throw error;
+        }
     },
 
     addAccount : (email, password) => {
-        return conn.any('INSERT INTO "ACCOUNTS" ("email", "password") VALUES (${email}, ${password})', {
-            email: email,
-            password: password,
-        });
+        try {
+            return conn.any('INSERT INTO "ACCOUNTS" ("email", "password") VALUES (${email}, ${password})', {
+                email: email,
+                password: password,
+            });
+        } catch (error) {
+            throw error;
+        }
     },
 
     updateLoginTime: (uuid) => {
-        return conn.any('UPDATE "ACCOUNTS" SET "last_login" = NOW() WHERE "uuid" = ${uuid}', {
-            uuid: uuid,
-        })
+        try {
+            return conn.any('UPDATE "ACCOUNTS" SET "last_login" = NOW() WHERE "uuid" = ${uuid}', {
+                uuid: uuid,
+            })
+        } catch (error) {
+            throw error;
+        }
     },
 
     updateVerified: (email) => {
-        return conn.any('UPDATE "ACCOUNTS" SET "verified" = TRUE WHERE "email" = ${email}', {
-            email: email,
-        })
+        try {
+            return conn.any('UPDATE "ACCOUNTS" SET "verified" = TRUE WHERE "email" = ${email}', {
+                email: email,
+            })
+        } catch (error) {
+            throw error;
+        }
     }
 } 

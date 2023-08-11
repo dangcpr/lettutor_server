@@ -109,7 +109,7 @@ module.exports = {
             }
 
             const token = jwt.sign({ email: req.body.email }, process.env.JWT_SECRET_SIGNUP, { expiresIn: '5m' });
-            sendMail(req.body.email, `${process.env.SERVER}/verified/token/${token}`)
+            sendMail(req.body.email, `${process.env.SERVER}/account/verified/token/${token}`)
             res.status(200).json({
                 'result': {
                     'message': 'Gửi lại email xác thực thành công',
@@ -176,8 +176,8 @@ module.exports = {
 
             if (result.length === 0) {
                 return res.status(401).json ({
-                    'error': 110,
-                    'message': 'Email không tồn tại'
+                    'error': 111,
+                    'message': 'Email hoặc mật khẩu không đúng'
                 })
             }
             console.log(result[0]);
@@ -193,22 +193,28 @@ module.exports = {
                 const access_token = jwt.sign({ id: result[0].uuid }, process.env.JWT_SECRET, {expiresIn: "10m"});
                 const refresh_token = jwt.sign({ id: result[0].uuid }, process.env.JWT_SECRET_REFRESH, {expiresIn: "1y"});
 
+                res.clearCookie('access-token');
+                res.clearCookie('refresh-token');
+
                 if(result[0].verified === true) {
-                    await accountModel.updateLoginTime(result[0].uuid);
-                    message = 'Đăng nhập thành công'
+                    if(result[0].last_login === null) {
+                        message = 'Vui lòng đăng ký thông tin chính chủ'
+                    }
+                    else {
+                        await accountModel.updateLoginTime(result[0].uuid);
+                        res.cookie('access-token', access_token, { maxAge: 10 * 60 * 1000, httpOnly: true });
+                        res.cookie('refresh-token', refresh_token, { maxAge: 365 * 24 * 60 * 60 * 1000, httpOnly: true });
+                        message = 'Đăng nhập thành công'
+                    }
                 }
                 else {
                     message = 'Vui lòng xác thực tài khoản'
                 }
                 const infoAccount = await accountModel.getAccountById(result[0].uuid);
-
-                res.cookie('access-token', access_token, { maxAge: 10 * 60 * 1000, httpOnly: true });
-                res.cookie('refresh-token', refresh_token, { maxAge: 365 * 24 * 60 * 60 * 1000, httpOnly: true });
                 
                 return res.status(200).json({
                     'result': {
                         ...infoAccount,
-                        'token': access_token,
                     },
                     'message': message
                 });
@@ -304,5 +310,19 @@ module.exports = {
                 'message': e.message
             })
         }
-    }
+    },
+
+    logout: (req, res) => {
+        try {
+            res.clearCookie('access-token');
+            res.clearCookie('refresh-token');
+            return res.status(200).json({
+                'message': 'Đăng xuất thành công'
+            })
+        } catch (e) {
+            return res.status(500).json({
+                message: e.message
+            })
+        }
+    },
 }
