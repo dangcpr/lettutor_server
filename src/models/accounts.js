@@ -59,5 +59,44 @@ module.exports = {
         } catch (error) {
             throw error;
         }
-    }
+    },
+
+    updateInfomation: (email, avatar, name, country, phone, DOB, level, learn) => {
+        try {
+            return conn.any('UPDATE "ACCOUNTS" SET "avatar" = ${avatar}, "name" = ${name}, "country" = ${country}, "phone" = ${phone}, "DOB" = ${DOB}, "level" = ${level}, "learn" = ${learn} WHERE "email" = ${email}', {
+                email: email,
+                avatar: avatar,
+                name: name,
+                country: country,
+                phone: phone,
+                DOB: DOB,
+                level: level,
+                learn: learn,
+            })
+        } 
+        catch (error) {
+            throw error;
+        }
+    },
+
+    getIDbyEmail: (email) => {
+        try {
+            return conn.one('SELECT "uuid" FROM "ACCOUNTS" WHERE "email" = ${email}', {
+                email: email,
+            })
+        } catch (error) {
+            throw error;
+        }
+    },
+
+    updateAvatarById: (uuid, avatar) => {
+        try {
+            return conn.any('UPDATE "ACCOUNTS" SET "avatar" = ${avatar} WHERE "uuid" = ${uuid}', {
+                uuid: uuid,
+                avatar: avatar,
+            })
+        } catch (error) {
+            throw error;
+        }
+    },
 } 

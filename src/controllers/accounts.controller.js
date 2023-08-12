@@ -3,6 +3,8 @@ const jwt = require('jsonwebtoken');
 const bcryptjs = require('bcryptjs');
 var validator = require("email-validator");
 const { sendMail } = require('../helpers');
+const cloudinary = require('../config/cloud');
+const uploader = require('../middlewares/uploader.js');
 require('dotenv').config();
 //Dùng cookies
 
@@ -153,6 +155,131 @@ module.exports = {
                     'message': e.message,
                 });
             }
+        }
+    },
+
+    updateInfomation: async (req, res) => {
+        try {
+            if (req.body.email === null || req.body.email === '') {
+                return res.status(400).json ({
+                    'error': 201,
+                    'message': 'Không được để trống email, mật khẩu và nhập lại mật khẩu'
+                })
+            }
+
+            if(validator.validate(req.body.email) === false) {
+                return res.status(400).json ({
+                    'error': 202,
+                    'message': 'Email không hợp lệ'
+                })
+            }
+
+            const result = await accountModel.getAccountByEmail(req.body.email)
+            if (result.length == 0) {
+                return res.status(401).json ({
+                    'error': 212,
+                    'message': 'Email không tồn tại'
+                })
+            }
+            if (result[0].verified === false) {
+                return res.status(401).json ({
+                    'error': 213,
+                    'message': 'Email chưa được xác thực, vui lòng xác thực email trước khi đăng kí thông tin'
+                })
+            }
+
+            //Check Valid form
+            if (req.body.name == null || req.body.name === '') {
+                return res.status(400).json ({
+                    'error': 221,
+                    'message': 'Không được để trống tên'
+                })
+            }
+            if (req.body.phone == null || req.body.phone === '') {
+                return res.status(400).json ({
+                    'error': 222,
+                    'message': 'Không được để trống số điện thoại'
+                })
+            }
+            if(req.body.country == null || req.body.country === '') {
+                return res.status(400).json ({
+                    'error': 224,
+                    'message': 'Không được để trống địa chỉ'
+                })
+            }
+            if(req.body.level == null || req.body.level === '') {
+                return res.status(400).json ({
+                    'error': 225,
+                    'message': 'Không được để trống cấp độ'
+                })
+            }        
+            if(req.body.learn == null || req.body.learn === []) {
+                return res.status(400).json ({
+                    'error': 226,
+                    'message': 'Không được để trống ngành học'
+                })
+            } 
+            if(req.body.DOB == null || req.body.DOB === '') {
+                return res.status(400).json ({
+                    'error': 227,
+                    'message': 'Không được để trống ngày sinh'
+                })
+            }
+
+            //upload avatar (nếu null thì xóa ảnh, nếu không thì upload ảnh mới)
+            let uuid, link_avatar = null;
+            uuid = await accountModel.getIDbyEmail(req.body.email);
+            if(req.file != undefined) {
+                console.log(uuid.uuid);
+                const upload = await cloudinary.v2.uploader.upload(req.file.path, {folder: 'avatar', public_id: uuid.uuid}); 
+                link_avatar = upload.secure_url;
+                await accountModel.updateInfomation(req.body.email, upload.secure_url, req.body.name, req.body.country, req.body.phone, req.body.DOB, req.body.level, req.body.learn);     
+            } else {
+                await accountModel.updateInfomation(req.body.email, null, req.body.name, req.body.country, req.body.phone, req.body.DOB, req.body.level, req.body.learn);
+                cloudinary.v2.api.delete_resources([`avatar/${uuid.uuid}`], { type: 'upload', resource_type: 'image' }).then((error, result) => {
+                    if(error) {
+                        return res.status(404).json({
+                            message: error.message
+                        })
+                    }
+                });
+            }
+
+            
+            if(result[0].last_login === null) {
+                await accountModel.updateLoginTime(result[0].uuid);
+            }
+
+            res.status(200).json({
+                'result': {
+                    'message': 'Cập nhật thông tin thành công',
+                    'link': link_avatar,
+                },
+            });
+        } catch (e) {
+            return res.status(500).json({
+                message: e.message
+            })
+       } 
+    },
+
+    deleteAvatar: async (req, res) => {
+        try {
+            cloudinary.v2.api.delete_resources([`avatar/${req.id}`], { type: 'upload', resource_type: 'image' }).then((error, result) => {
+                if(error) {
+                    return res.status(404).json({
+                        message: error.message
+                    })
+                }
+            });
+            await accountModel.updateAvatarById(req.id, null);
+            res.status(200).json({
+                'result': 'Xóa thành công',
+            });
+        } catch (e) {
+            return res.status(500).json({
+                message: e.message
+            })
         }
     },
 
@@ -325,4 +452,16 @@ module.exports = {
             })
         }
     },
+
+    temp : async (req, res) => {
+        try {
+            return res.status(200).json({
+                'result': req.body.email,
+            });
+        } catch (e) {
+            return res.status(500).json({
+                message: e.message
+            })
+        }
+    }
 }

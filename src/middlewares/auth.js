@@ -27,7 +27,7 @@ module.exports = {
                     }
                 }
                 else {
-                    req.email = decoded.email;
+                    req.id = decoded.id;
                     next();
                 }
             })
