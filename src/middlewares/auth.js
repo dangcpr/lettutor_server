@@ -7,6 +7,7 @@ module.exports = {
 
         if (!access_token) {
             return res.status(401).json({
+                error: 1,
                 message: 'Access token not found',
             });
         }
@@ -16,12 +17,14 @@ module.exports = {
                 if(err) {
                     if (err.name === 'TokenExpiredError') {
                         return res.status(401).json({
+                            error: 2,
                             message: 'Access token expired',
                         });
                     }
 
                     if(err.name === 'JsonWebTokenError') {
                         return res.status(401).json({
+                            error: 3,
                             message: 'Invalid access token',
                         });
                     }

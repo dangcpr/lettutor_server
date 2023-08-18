@@ -30,6 +30,16 @@ module.exports = {
         }
     },
 
+    getPasswordByEmail: (email) => {
+        try {
+            return conn.one('SELECT "password" FROM "ACCOUNTS" WHERE "email" = ${email}', {
+                email: email,
+            })
+        } catch (error) {
+            throw error;
+        }
+    },
+
     addAccount : (email, password) => {
         try {
             return conn.any('INSERT INTO "ACCOUNTS" ("email", "password") VALUES (${email}, ${password})', {

@@ -12,10 +12,11 @@ accountRouter.post('/signup', AccountController.signUp);
 accountRouter.post('/verified/resendtoken', AccountController.resendToken);
 accountRouter.get('/verified/token/:token', AccountController.verifiedTokenSignup);
 accountRouter.post('/login', AccountController.login);
-accountRouter.post('/refresh', AccountController.refreshToken);
+accountRouter.get('/refresh', AccountController.refreshToken);
 accountRouter.post('/autoLogin', AccountController.autoLogin);
 accountRouter.post('/logout', AccountController.logout);
-accountRouter.post('/updateInfo', uploader.single("avatar"), AccountController.updateInfomation);
+accountRouter.post('/registerInfo', uploader.single("avatar"), AccountController.registerInfomation);
+accountRouter.post('/updateInfo', auth, uploader.single("avatar"), AccountController.updateInfomation);
 accountRouter.delete('/deleteAvatar', auth, AccountController.deleteAvatar);
 
 module.exports = accountRouter;
