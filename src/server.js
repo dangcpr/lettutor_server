@@ -14,10 +14,12 @@ app.use(cookieParser())
 
 route(app);
 
-app.listen(PORT, async () => {
+const httpServer = app.listen(PORT, async () => {
     console.log(`Server is running on port ${PORT}`);
 });
 
+const io = require('socket.io')(httpServer, {cors: {origin: '*'}});
+require('./listeners/index.js')(io)
 /*
 app.get('/', async (req, res) =>  {
     try {
